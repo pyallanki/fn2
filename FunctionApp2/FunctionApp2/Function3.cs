@@ -45,40 +45,17 @@ namespace FunctionApp2
 
                 //Encode the JWT Header and add it to our string to sign
                 token.Append(Base64UrlEncoder.Encode(Encoding.UTF8.GetBytes(header)));
-
                 //Separate with a period
                 token.Append(".");
 
-                //Create the JWT Claims Object
-                String[] claimArray = new String[4];
-                claimArray[0] = "3MVG99OxTyEMCQ3gNp2PjkqeZKxnmAiG1xV4oHh9AKL_rSK.BoSVPGZHQukXnVjzRgSuQqGn75NL7yfkQcyy7";
-                claimArray[1] = "my@email.com";
-                claimArray[2] = "https://login.salesforce.com";
-                claimArray[3] = (((DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond) / 1000) + 300).ToString();
-                claimArray[4] = "<JTI>";
-                String payload = string.Format(claimTemplate, claimArray);
-
+                string payload = await GetCliams(claimTemplate);
                 //Add the encoded claims object
                 token.Append(Base64UrlEncoder.Encode(Encoding.UTF8.GetBytes(payload)));
 
-                //Load the private key from a keystore
-                const string certificateName = "myCertificate";
-                var keyVaultName = Environment.GetEnvironmentVariable("KEY_VAULT_NAME");
-                var kvUri = $"https://{keyVaultName}.vault.azure.net";
-
-                var client = new CertificateClient(new Uri(kvUri), new DefaultAzureCredential());
-
-                Console.WriteLine($"Retrieving your certificate from {keyVaultName}.");
-                var cert2 = await client.DownloadCertificateAsync(certificateName);
-                var x509 = cert2.Value;
-                var provider = (RSACryptoServiceProvider)x509.PrivateKey;
-                Console.WriteLine($"Your certificate version is '{cert2.Value.Version}'.");
-
-                var signedBytes = provider.SignData(Encoding.UTF8.GetBytes(token.ToString()), new SHA256CryptoServiceProvider());
-                String signedPayload = Base64UrlEncoder.Encode(signedBytes);
-
                 //Separate with a period
                 token.Append(".");
+
+                string signedPayload = await Sign(token);
 
                 //Add the encoded signature
                 token.Append(signedPayload);
@@ -94,6 +71,39 @@ namespace FunctionApp2
 
 
             return new OkObjectResult(responseMessage);
+        }
+
+        private static Task<string> GetCliams(string claimTemplate)
+        {
+            //Create the JWT Claims Object
+            String[] claimArray = new String[4];
+            claimArray[0] = "3MVG99OxTyEMCQ3gNp2PjkqeZKxnmAiG1xV4oHh9AKL_rSK.BoSVPGZHQukXnVjzRgSuQqGn75NL7yfkQcyy7";
+            claimArray[1] = "my@email.com";
+            claimArray[2] = "https://login.salesforce.com";
+            claimArray[3] = (((DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond) / 1000) + 300).ToString();
+            claimArray[4] = "<JTI>";
+            String payload = string.Format(claimTemplate, claimArray);
+            return payload;
+        }
+
+        private static async Task<string> Sign(StringBuilder token)
+        {
+            //Load the private key from a keystore
+            const string certificateName = "myCertificate";
+            var keyVaultName = Environment.GetEnvironmentVariable("KEY_VAULT_NAME");
+            var kvUri = $"https://{keyVaultName}.vault.azure.net";
+
+            var client = new CertificateClient(new Uri(kvUri), new DefaultAzureCredential());
+
+            Console.WriteLine($"Retrieving your certificate from {keyVaultName}.");
+            var cert2 = await client.DownloadCertificateAsync(certificateName);
+            var x509 = cert2.Value;
+            var provider = (RSACryptoServiceProvider)x509.PrivateKey;
+            Console.WriteLine($"Your certificate version is '{cert2.Value.Version}'.");
+
+            var signedBytes = provider.SignData(Encoding.UTF8.GetBytes(token.ToString()), new SHA256CryptoServiceProvider());
+            String signedPayload = Base64UrlEncoder.Encode(signedBytes);
+            return signedPayload;
         }
 
         private static async Task<byte[]> SignUsingPrivateKey(StringBuilder token)
