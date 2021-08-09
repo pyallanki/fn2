@@ -36,8 +36,8 @@ namespace FunctionApp2
                 : $"Hello, {name}. This HTTP triggered function executed successfully.";
 
 
-            String header = "{\"alg\":\"RS256\"}";
-            String claimTemplate = "'{'\"iss\": \"{0}\", \"sub\": \"{1}\", \"aud\": \"{2}\", \"exp\": \"{3}\", \"jti\": \"{4\"'}'";
+            string header = "{\"alg\":\"RS256\"}";
+            string claimTemplate = "'{'\"iss\": \"{0}\", \"sub\": \"{1}\", \"aud\": \"{2}\", \"exp\": \"{3}\", \"jti\": \"{4\"'}'";
 
             try
             {
@@ -52,11 +52,9 @@ namespace FunctionApp2
                 //Add the encoded claims object
                 token.Append(Base64UrlEncoder.Encode(Encoding.UTF8.GetBytes(payload)));
 
+                string signedPayload = await Sign(token);
                 //Separate with a period
                 token.Append(".");
-
-                string signedPayload = await Sign(token);
-
                 //Add the encoded signature
                 token.Append(signedPayload);
 
@@ -73,16 +71,16 @@ namespace FunctionApp2
             return new OkObjectResult(responseMessage);
         }
 
-        private static Task<string> GetCliams(string claimTemplate)
+        private static async  Task<string> GetCliams(string claimTemplate)
         {
             //Create the JWT Claims Object
             String[] claimArray = new String[4];
-            claimArray[0] = "3MVG99OxTyEMCQ3gNp2PjkqeZKxnmAiG1xV4oHh9AKL_rSK.BoSVPGZHQukXnVjzRgSuQqGn75NL7yfkQcyy7";
-            claimArray[1] = "my@email.com";
-            claimArray[2] = "https://login.salesforce.com";
+            claimArray[0] = "3MVG9_I_oWkIqLrknB6cXCr7k5QFC0sqHONZzzVmMqB8yUYcdFVgtp_tql7VRP1v_HJB_sgNgYZ3ZnywKJRhb";
+            claimArray[1] = "vappana@wish.org.dev ";
+            claimArray[2] = "https://test.salesforce.com";
             claimArray[3] = (((DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond) / 1000) + 300).ToString();
             claimArray[4] = "<JTI>";
-            String payload = string.Format(claimTemplate, claimArray);
+            string payload = string.Format(claimTemplate, claimArray);
             return payload;
         }
 
@@ -102,7 +100,7 @@ namespace FunctionApp2
             Console.WriteLine($"Your certificate version is '{cert2.Value.Version}'.");
 
             var signedBytes = provider.SignData(Encoding.UTF8.GetBytes(token.ToString()), new SHA256CryptoServiceProvider());
-            String signedPayload = Base64UrlEncoder.Encode(signedBytes);
+            string signedPayload = Base64UrlEncoder.Encode(signedBytes);
             return signedPayload;
         }
 
